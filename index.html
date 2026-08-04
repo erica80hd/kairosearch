@@ -45,7 +45,9 @@
     .result-item a { color: #0066cc; text-decoration: none; word-break: break-all; }
     .result-item a:hover { text-decoration: underline; }
     .no-results { color: #666; font-style: italic; }
-    .status { margin-bottom: 16px; color: #666; font-size: 14px; }
+    .status { margin-bottom: 16px; font-size: 14px; font-weight: bold; }
+    .status.error { color: #d93025; }
+    .status.success { color: #188038; }
   </style>
 </head>
 <body>
@@ -61,14 +63,17 @@
   <div id="results"></div>
 
   <script>
-// 1. Paste ONLY your sheet ID here (the long string of letters and numbers)
-const SHEET_ID = '17WKIEUALwnB_dYaX_Ek7Uc4L74kdAm-ihC1VnU2QbEk';
+    // =========================================================
+    // STEP 1: Paste ONLY your Google Sheet ID here!
+    // Example ID from a sheet URL: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+    // =========================================================
+    const SHEET_ID = '17WKIEUALwnB_dYaX_Ek7Uc4L74kdAm-ihC1VnU2QbEk'; 
 
-// 2. Use this exact URL structure:
-const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${17WKIEUALwnB_dYaX_Ek7Uc4L74kdAm-ihC1VnU2QbEk}/gviz/tq?tqx=out:csv`;
+    // Constructing the direct CSV export endpoint
+    const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${17WKIEUALwnB_dYaX_Ek7Uc4L74kdAm-ihC1VnU2QbEk}/gviz/tq?tqx=out:csv`;
+
     let sheetData = [];
 
-    // Simple CSV parser that handles commas inside quotes
     function parseCSV(text) {
       const lines = text.trim().split('\n');
       return lines.map(line => {
@@ -85,17 +90,34 @@ const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${17WKIEUALwnB_dYa
       });
     }
 
-    // Fetch and cache the spreadsheet data when page loads
     async function loadSheetData() {
       const statusEl = document.getElementById('status');
+      statusEl.className = 'status';
+      statusEl.textContent = 'Connecting to Google Sheets...';
+
+      // Timeout after 8 seconds if fetch hangs
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
       try {
-        const response = await fetch(SHEET_CSV_URL);
+        const response = await fetch(SHEET_CSV_URL, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP Error ${response.status}: Sheet access denied or not found.`);
+        }
+
         const csvText = await response.text();
+
+        // Check if Google returned an HTML login page instead of CSV data
+        if (csvText.startsWith('<!DOCTYPE html') || csvText.includes('<html')) {
+          throw new Error('Google returned HTML instead of CSV. Ensure your Google Sheet sharing is set to "Anyone with the link can view".');
+        }
+
         const rows = parseCSV(csvText);
 
         if (rows.length < 2) {
-          statusEl.textContent = 'Spreadsheet appears empty.';
-          return;
+          throw new Error('Spreadsheet loaded, but it appears to be empty.');
         }
 
         // Identify header column indices (case-insensitive)
@@ -104,26 +126,29 @@ const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${17WKIEUALwnB_dYa
         const linkIndex = headers.indexOf('reaction link');
 
         if (titleIndex === -1 || linkIndex === -1) {
-          statusEl.textContent = 'Error: Could not find "Title" or "Reaction Link" columns.';
-          return;
+          const foundHeaders = rows[0].filter(Boolean).join(', ');
+          throw new Error(`Missing required columns. Found: [${foundHeaders}]. Required: "Title" and "Reaction Link".`);
         }
 
-        // Parse remaining rows into structured objects
         sheetData = rows.slice(1).map(row => ({
           title: row[titleIndex] || '',
           link: row[linkIndex] || '',
-          // Store entire row joined together for easy keyword matching
           fullContent: row.join(' ').toLowerCase()
         }));
 
-        statusEl.textContent = `Ready to search (${sheetData.length} items loaded).`;
+        statusEl.className = 'status success';
+        statusEl.textContent = `Ready! (${sheetData.length} items loaded from spreadsheet)`;
       } catch (err) {
-        statusEl.textContent = 'Failed to load spreadsheet data. Check your published link.';
+        statusEl.className = 'status error';
+        if (err.name === 'AbortError') {
+          statusEl.textContent = 'Error: Request timed out. Check your internet connection or Sheet ID.';
+        } else {
+          statusEl.textContent = `Error: ${err.message}`;
+        }
         console.error(err);
       }
     }
 
-    // Execute the search
     function handleSearch() {
       const query = document.getElementById('searchInput').value.trim().toLowerCase();
       const resultsEl = document.getElementById('results');
@@ -149,12 +174,10 @@ const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${17WKIEUALwnB_dYa
       });
     }
 
-    // Helper to prevent script injection (XSS)
     function escapeHtml(str) {
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
-    // Load data on start
     loadSheetData();
   </script>
 </body>
