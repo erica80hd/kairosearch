@@ -62,19 +62,17 @@
   <div id="status" class="status">Loading sheet data...</div>
   <div id="results"></div>
 
-<script>
-    console.log("1. Script tag loaded.");
-
-    // Replace with your Google Sheet ID
+  <script>
+    // Paste ONLY your Sheet ID inside the single quotes (e.g. '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms')
     const SHEET_ID = '17WKIEUALwnB_dYaX_Ek7Uc4L74kdAm-ihC1VnU2QbEk'; 
-    const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${17WKIEUALwnB_dYaX_Ek7Uc4L74kdAm-ihC1VnU2QbEk}/gviz/tq?tqx=out:csv`;
+
+    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/" + 17WKIEUALwnB_dYaX_Ek7Uc4L74kdAm-ihC1VnU2QbEk + "/gviz/tq?tqx=out:csv";
 
     let sheetData = [];
 
     function parseCSV(text) {
-      console.log("Parsing CSV payload...");
       const lines = text.trim().split('\n');
-      return lines.map(line => {
+      return lines.map(function(line) {
         const regex = /(?:,|\n|^)("(?:(?:"")*[^"]*)*"|[^",\n]*)/g;
         const row = [];
         let match;
@@ -89,65 +87,54 @@
     }
 
     async function loadSheetData() {
-      console.log("2. loadSheetData() function started.");
       const statusEl = document.getElementById('status');
-      
-      if (!statusEl) {
-        console.error("CRITICAL: Element with id='status' not found in HTML!");
-        return;
-      }
+      if (!statusEl) return;
 
       statusEl.className = 'status';
       statusEl.textContent = 'Connecting to Google Sheets...';
-      console.log("3. Status text updated to 'Connecting...'");
 
       try {
-        console.log("4. Sending fetch request to:", SHEET_CSV_URL);
         const response = await fetch(SHEET_CSV_URL);
-        console.log("5. Fetch response received. HTTP status:", response.status);
 
         if (!response.ok) {
-          throw new Error(`HTTP Error ${response.status}: Sheet access denied or not found.`);
+          throw new Error('HTTP Error ' + response.status + ': Sheet access denied or not found.');
         }
 
         const csvText = await response.text();
-        console.log("6. Received text payload length:", csvText.length);
 
         if (csvText.startsWith('<!DOCTYPE html') || csvText.includes('<html')) {
           throw new Error('Google returned HTML instead of CSV. Ensure your Google Sheet sharing is set to "Anyone with the link can view".');
         }
 
         const rows = parseCSV(csvText);
-        console.log("7. CSV parsed into", rows.length, "rows.");
 
         if (rows.length < 2) {
           throw new Error('Spreadsheet loaded, but it appears to be empty.');
         }
 
-        const headers = rows[0].map(h => h.toLowerCase());
-        console.log("8. Found headers:", headers);
-
+        const headers = rows[0].map(function(h) { return h.toLowerCase(); });
         const titleIndex = headers.indexOf('title');
         const linkIndex = headers.indexOf('reaction link');
 
         if (titleIndex === -1 || linkIndex === -1) {
           const foundHeaders = rows[0].filter(Boolean).join(', ');
-          throw new Error(`Missing required columns. Found: [${foundHeaders}]. Required: "Title" and "Reaction Link".`);
+          throw new Error('Missing required columns. Found: [' + foundHeaders + ']. Required: "Title" and "Reaction Link".');
         }
 
-        sheetData = rows.slice(1).map(row => ({
-          title: row[titleIndex] || '',
-          link: row[linkIndex] || '',
-          fullContent: row.join(' ').toLowerCase()
-        }));
+        sheetData = rows.slice(1).map(function(row) {
+          return {
+            title: row[titleIndex] || '',
+            link: row[linkIndex] || '',
+            fullContent: row.join(' ').toLowerCase()
+          };
+        });
 
         statusEl.className = 'status success';
-        statusEl.textContent = `Ready! (${sheetData.length} items loaded from spreadsheet)`;
-        console.log("9. Setup complete!");
+        statusEl.textContent = 'Ready! (' + sheetData.length + ' items loaded)';
       } catch (err) {
         statusEl.className = 'status error';
-        statusEl.textContent = `Error: ${err.message}`;
-        console.error("Execution stopped with error:", err);
+        statusEl.textContent = 'Error: ' + err.message;
+        console.error(err);
       }
     }
 
@@ -158,20 +145,20 @@
 
       if (!query) return;
 
-      const matches = sheetData.filter(item => item.fullContent.includes(query));
+      const matches = sheetData.filter(function(item) {
+        return item.fullContent.includes(query);
+      });
 
       if (matches.length === 0) {
         resultsEl.innerHTML = '<div class="no-results">No matching results found.</div>';
         return;
       }
 
-      matches.forEach(item => {
+      matches.forEach(function(item) {
         const div = document.createElement('div');
         div.className = 'result-item';
-        div.innerHTML = `
-          <h3>${escapeHtml(item.title)}</h3>
-          ${item.link ? `<a href="${escapeHtml(item.link)}" target="_blank" rel="noopener">Open Reaction Link</a>` : '<em>No link provided</em>'}
-        `;
+        div.innerHTML = '<h3>' + escapeHtml(item.title) + '</h3>' +
+          (item.link ? '<a href="' + escapeHtml(item.link) + '" target="_blank" rel="noopener">Open Reaction Link</a>' : '<em>No link provided</em>');
         resultsEl.appendChild(div);
       });
     }
@@ -180,8 +167,6 @@
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
-    // Explicitly call loadSheetData on DOM ready
-    console.log("10. Triggering initial loadSheetData() call...");
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', loadSheetData);
     } else {
