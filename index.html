@@ -62,19 +62,17 @@
   <div id="status" class="status">Loading sheet data...</div>
   <div id="results"></div>
 
-  <script>
-    // =========================================================
-    // STEP 1: Paste ONLY your Google Sheet ID here!
-    // Example ID from a sheet URL: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
-    // =========================================================
-    const SHEET_ID = '17WKIEUALwnB_dYaX_Ek7Uc4L74kdAm-ihC1VnU2QbEk'; 
+<script>
+    console.log("1. Script tag loaded.");
 
-    // Constructing the direct CSV export endpoint
-    const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${17WKIEUALwnB_dYaX_Ek7Uc4L74kdAm-ihC1VnU2QbEk}/gviz/tq?tqx=out:csv`;
+    // Replace with your Google Sheet ID
+    const SHEET_ID = 'YOUR_SHEET_ID_HERE'; 
+    const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 
     let sheetData = [];
 
     function parseCSV(text) {
+      console.log("Parsing CSV payload...");
       const lines = text.trim().split('\n');
       return lines.map(line => {
         const regex = /(?:,|\n|^)("(?:(?:"")*[^"]*)*"|[^",\n]*)/g;
@@ -91,37 +89,44 @@
     }
 
     async function loadSheetData() {
+      console.log("2. loadSheetData() function started.");
       const statusEl = document.getElementById('status');
+      
+      if (!statusEl) {
+        console.error("CRITICAL: Element with id='status' not found in HTML!");
+        return;
+      }
+
       statusEl.className = 'status';
       statusEl.textContent = 'Connecting to Google Sheets...';
-
-      // Timeout after 8 seconds if fetch hangs
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      console.log("3. Status text updated to 'Connecting...'");
 
       try {
-        const response = await fetch(SHEET_CSV_URL, { signal: controller.signal });
-        clearTimeout(timeoutId);
+        console.log("4. Sending fetch request to:", SHEET_CSV_URL);
+        const response = await fetch(SHEET_CSV_URL);
+        console.log("5. Fetch response received. HTTP status:", response.status);
 
         if (!response.ok) {
           throw new Error(`HTTP Error ${response.status}: Sheet access denied or not found.`);
         }
 
         const csvText = await response.text();
+        console.log("6. Received text payload length:", csvText.length);
 
-        // Check if Google returned an HTML login page instead of CSV data
         if (csvText.startsWith('<!DOCTYPE html') || csvText.includes('<html')) {
           throw new Error('Google returned HTML instead of CSV. Ensure your Google Sheet sharing is set to "Anyone with the link can view".');
         }
 
         const rows = parseCSV(csvText);
+        console.log("7. CSV parsed into", rows.length, "rows.");
 
         if (rows.length < 2) {
           throw new Error('Spreadsheet loaded, but it appears to be empty.');
         }
 
-        // Identify header column indices (case-insensitive)
         const headers = rows[0].map(h => h.toLowerCase());
+        console.log("8. Found headers:", headers);
+
         const titleIndex = headers.indexOf('title');
         const linkIndex = headers.indexOf('reaction link');
 
@@ -138,14 +143,11 @@
 
         statusEl.className = 'status success';
         statusEl.textContent = `Ready! (${sheetData.length} items loaded from spreadsheet)`;
+        console.log("9. Setup complete!");
       } catch (err) {
         statusEl.className = 'status error';
-        if (err.name === 'AbortError') {
-          statusEl.textContent = 'Error: Request timed out. Check your internet connection or Sheet ID.';
-        } else {
-          statusEl.textContent = `Error: ${err.message}`;
-        }
-        console.error(err);
+        statusEl.textContent = `Error: ${err.message}`;
+        console.error("Execution stopped with error:", err);
       }
     }
 
@@ -178,7 +180,13 @@
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
-    loadSheetData();
+    // Explicitly call loadSheetData on DOM ready
+    console.log("10. Triggering initial loadSheetData() call...");
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadSheetData);
+    } else {
+      loadSheetData();
+    }
   </script>
 </body>
 </html>
