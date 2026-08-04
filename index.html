@@ -55,15 +55,15 @@
   <h2>Spreadsheet Search</h2>
   
   <div class="search-box">
-    <input type="text" id="searchInput" placeholder="Enter keyword..." onkeyup="if(event.key === 'Enter') handleSearch()">
-    <button onclick="handleSearch()">Search</button>
+    <input type="text" id="searchInput" placeholder="Enter keyword...">
+    <button id="searchBtn">Search</button>
   </div>
 
   <div id="status" class="status">Loading sheet data...</div>
   <div id="results"></div>
 
   <script>
-    // Paste ONLY your Sheet ID inside the single quotes (e.g. '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms')
+    // Paste ONLY your Sheet ID inside the single quotes
     const SHEET_ID = '17WKIEUALwnB_dYaX_Ek7Uc4L74kdAm-ihC1VnU2QbEk'; 
 
     const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/" + 17WKIEUALwnB_dYaX_Ek7Uc4L74kdAm-ihC1VnU2QbEk + "/gviz/tq?tqx=out:csv";
@@ -167,10 +167,30 @@
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', loadSheetData);
-    } else {
+    // Attach event listeners cleanly without inline JS
+    function init() {
+      const searchBtn = document.getElementById('searchBtn');
+      const searchInput = document.getElementById('searchInput');
+
+      if (searchBtn) {
+        searchBtn.addEventListener('click', handleSearch);
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('keyup', function(event) {
+          if (event.key === 'Enter') {
+            handleSearch();
+          }
+        });
+      }
+
       loadSheetData();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
     }
   </script>
 </body>
