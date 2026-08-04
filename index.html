@@ -61,9 +61,11 @@
   <div id="results"></div>
 
   <script>
-    // 1. Replace with your published Google Sheet CSV URL
-    const https://docs.google.com/spreadsheets/d/e/2PACX-1vRHJziYReIguZ-QDy4ZM68N9qr49RR-QKqai_khhYZ8WseupeKux-OczvUYTVxBP8DQgeXoci7HyeNw/pub?output=csv = 'YOUR_PUBLISHED_CSV_URL_HERE';
+// 1. Paste ONLY your sheet ID here (the long string of letters and numbers)
+const SHEET_ID = '17WKIEUALwnB_dYaX_Ek7Uc4L74kdAm-ihC1VnU2QbEk';
 
+// 2. Use this exact URL structure:
+const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${17WKIEUALwnB_dYaX_Ek7Uc4L74kdAm-ihC1VnU2QbEk}/gviz/tq?tqx=out:csv`;
     let sheetData = [];
 
     // Simple CSV parser that handles commas inside quotes
